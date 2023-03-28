@@ -36,7 +36,10 @@ function updateMapCenter(lat, lon) {
   var centerAt = L.latLng(lat, lon);
   center.setLatLng(centerAt);
   //center2.setLatLng(centerAt);
-  //map.panTo(centerAt);
+  if (!window.flighttime.initial_pan) {
+    window.flighttime.initial_pan = true;
+    map.panTo(centerAt);
+  }
 }
 
 async function taskUserLocation() {
@@ -48,32 +51,51 @@ async function taskUserLocation() {
   updateMapCenter(latitude, longitude);
 }
 
+function drawVertices(vertices) {
+  var poly = L.polygon(vertices, { color: 'red' });
+  poly.addTo(map);
+  return poly;
+}
+
 async function loadTFRs() {
   var rtfrs = await fetch("https://tfrs.jasonho.workers.dev");
   var utfrs = await rtfrs.text();
   var tfrs = JSON.parse(utfrs);
   for (let tfr of tfrs) {
-    var rdeets = await fetch("https://tfrs.jasonho.workers.dev/" + tfr.notam);
+    var rdeets = null
+    try {
+      rdeets = await fetch("https://tfrs.jasonho.workers.dev/" + tfr.notam);
+    } catch(ex) {
+      addAlert("NOTAM " + tfr.notam + " could not be loaded!");
+      console.warn(tfr);
+      continue;
+    }
     var udeets = await rdeets.text();
     var deets = JSON.parse(udeets);
     if (deets.airspace instanceof Array) {
-      addAlert("NOTAM " + tfr.notam + " has multiple boundaries");
-      console.warn(deets);
+      //addAlert("NOTAM " + tfr.notam + " has multiple boundaries");
+      //console.warn(deets);
+      for (let airspace of deets.airspace) {
+        drawVertices(airspace.boundary.vertices);
+      }
     } else {
       if (!deets.airspace.boundary || deets.airspace.boundary == null) {
         addAlert("NOTAM " + tfr.notam + " has no defined boundary!");
-      console.warn(deets);
+        console.warn(deets);
+        continue;
       }
       if (!deets.airspace.boundary.vertices) {
         addAlert("NOTAM " + tfr.notam + " has no defined vertices!");
-      console.warn(deets);
+        console.warn(deets);
+        continue;
       }
-      L.polygon(deets.airspace.boundary.vertices, { color: 'red' }).addTo(map);
+      drawVertices(deets.airspace.boundary.vertices);
     }
   }
 }
 
 async function main() {
+  window.flighttime = {};
   setInterval(async () => {
     await taskUserLocation();
   }, 1000);
