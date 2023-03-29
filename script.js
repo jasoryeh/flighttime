@@ -111,7 +111,7 @@ async function loadTFRs() {
           <i>${tfr.type}</i><br/>
           ${tfr.description}<br/>
           <br/>
-          <a href=${tfr.links.details}>
+          <a target="_blank" href=${tfr.links.details}>
             <small>See Listing</small>
           </a>`).addTo(map);
     }
