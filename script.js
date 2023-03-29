@@ -51,10 +51,20 @@ async function taskUserLocation() {
   updateMapCenter(latitude, longitude);
 }
 
-function drawVertices(vertices) {
-  var poly = L.polygon(vertices, { color: 'red' });
-  poly.addTo(map);
-  return poly;
+class Region {
+  constructor(vertices, popup) {
+    this.vertices = vertices;
+    this.popup = popup ?? "";
+  }
+
+  addTo(map) { 
+    var poly = L.polygon(this.vertices, { color: 'red' });
+    poly.addTo(map);
+    
+    var popup = L.popup().setContent(this.popup);
+    poly.bindPopup(popup);
+    return poly;
+  }
 }
 
 async function loadTFRs() {
@@ -72,11 +82,13 @@ async function loadTFRs() {
     }
     var udeets = await rdeets.text();
     var deets = JSON.parse(udeets);
+
+    var tfrsToDraw = [];
     if (deets.airspace instanceof Array) {
       //addAlert("NOTAM " + tfr.notam + " has multiple boundaries");
       //console.warn(deets);
       for (let airspace of deets.airspace) {
-        drawVertices(airspace.boundary.vertices);
+        tfrsToDraw.push([airspace.boundary.vertices, tfr, deets, airspace]);
       }
     } else {
       if (!deets.airspace.boundary || deets.airspace.boundary == null) {
@@ -89,7 +101,19 @@ async function loadTFRs() {
         console.warn(deets);
         continue;
       }
-      drawVertices(deets.airspace.boundary.vertices);
+      tfrsToDraw.push([deets.airspace.boundary.vertices, tfr, deets, deets.airspace]);
+    }
+
+    for (let [vertices, tfr, details, airspace] of tfrsToDraw) {
+      new Region(vertices, `
+          <small>${tfr.facility}</small><br/>
+          <b>NOTAM ${tfr.notam}</b><br/>
+          <i>${tfr.type}</i><br/>
+          ${tfr.description}<br/>
+          <br/>
+          <a href=${tfr.links.details}>
+            <small>See Listing</small>
+          </a>`).addTo(map);
     }
   }
 }
