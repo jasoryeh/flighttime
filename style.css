@@ -12,6 +12,10 @@ body {
   bottom: 0;
   left: 0;
   z-index: 10000;
+  max-height: 25vh;
+  overflow: scroll;
+  display: flex;
+  flex-direction: column;
 }
 
 #alerts .alert {

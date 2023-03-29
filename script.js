@@ -42,13 +42,14 @@ function updateMapCenter(lat, lon) {
   }
 }
 
-async function taskUserLocation() {
+async function centerOnUserLocation() {
   let currLocation = await getLocation();
   let accuracy = currLocation.coords.accuracy;
   let latitude = currLocation.coords.latitude;
   let longitude = currLocation.coords.longitude;
   console.log([accuracy, latitude, longitude]);
   updateMapCenter(latitude, longitude);
+  map.panTo([latitude, longitude]);
 }
 
 class Region {
@@ -57,10 +58,10 @@ class Region {
     this.popup = popup ?? "";
   }
 
-  addTo(map) { 
+  addTo(map) {
     var poly = L.polygon(this.vertices, { color: 'red' });
     poly.addTo(map);
-    
+
     var popup = L.popup().setContent(this.popup);
     poly.bindPopup(popup);
     return poly;
@@ -75,7 +76,7 @@ async function loadTFRs() {
     var rdeets = null
     try {
       rdeets = await fetch("https://tfrs.jasonho.workers.dev/" + tfr.notam);
-    } catch(ex) {
+    } catch (ex) {
       addAlert("NOTAM " + tfr.notam + " could not be loaded!");
       console.warn(tfr);
       continue;
@@ -120,8 +121,18 @@ async function loadTFRs() {
 
 async function main() {
   window.flighttime = {};
+  navigator.geolocation.watchPosition((position) => {
+    let accuracy = position.coords.accuracy;
+    let latitude = position.coords.latitude;
+    let longitude = position.coords.longitude;
+    console.log([accuracy, latitude, longitude]);
+    updateMapCenter(latitude, longitude);
+  }, (error) => {
+    console.err("Failed geolocation watch!");
+    console.err(error);
+  });
   setInterval(async () => {
-    await taskUserLocation();
+    //await taskUserLocation();
   }, 1000);
   await loadTFRs();
 }
