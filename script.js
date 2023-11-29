@@ -17,11 +17,26 @@ const center = L.marker([0, 0], { icon: center_icon }).addTo(map);
 //const center2 = L.marker([0, 0]).addTo(map);
 
 const alerts = document.getElementById("alerts");
-function addAlert(message) {
+function addAlert(message, messageDetails = "") {
   console.warn(message);
-  let newAlert = document.createElement("div");
+  const detailedMessage = messageDetails && messageDetails != "";
+  
+  let newAlert = document.createElement(detailedMessage ? "details" : "div");
   newAlert.setAttribute("class", "alert");
-  newAlert.innerHTML = message;
+
+  let alertSum = document.createElement("summary");
+  alertSum.innerHTML = message;
+
+  let alertDet = document.createElement("div");  
+  alertDet.innerHTML = messageDetails;
+  
+  if (detailedMessage) {
+    newAlert.innerHTML = alertSum.outerHTML + alertDet.outerHTML;
+  } else {
+    newAlert.tagName = "div";
+    newAlert.innerHTML = message;
+  }
+
   alerts.appendChild(newAlert);
   return newAlert;
 }
@@ -68,6 +83,18 @@ class Region {
   }
 }
 
+function generatePopup(tfr) {
+  return `
+  <small>${tfr.facility}</small><br/>
+  <b>NOTAM ${tfr.notam}</b><br/>
+  <i>${tfr.type}</i><br/>
+  ${tfr.description}<br/>
+  <br/>
+  <a target="_blank" href=${tfr.links.details}>
+    <small>See Listing</small>
+  </a>`;
+}
+
 async function loadTFRs() {
   var rtfrs = await fetch("https://tfrs.jasonho.workers.dev");
   var utfrs = await rtfrs.text();
@@ -93,7 +120,7 @@ async function loadTFRs() {
       }
     } else {
       if (!deets.airspace.boundary || deets.airspace.boundary == null) {
-        addAlert("NOTAM " + tfr.notam + " has no defined boundary!");
+        addAlert("NOTAM " + tfr.notam + " has no defined boundary!<br/>", generatePopup(tfr));
         console.warn(deets);
         continue;
       }
@@ -106,15 +133,7 @@ async function loadTFRs() {
     }
 
     for (let [vertices, tfr, details, airspace] of tfrsToDraw) {
-      new Region(vertices, `
-          <small>${tfr.facility}</small><br/>
-          <b>NOTAM ${tfr.notam}</b><br/>
-          <i>${tfr.type}</i><br/>
-          ${tfr.description}<br/>
-          <br/>
-          <a target="_blank" href=${tfr.links.details}>
-            <small>See Listing</small>
-          </a>`).addTo(map);
+      new Region(vertices, generatePopup(tfr)).addTo(map);
     }
   }
 }
